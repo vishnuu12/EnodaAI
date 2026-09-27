@@ -16,31 +16,65 @@ import com.vishnu.assistant.ui.AssistantViewModel
 
 class MainActivity : ComponentActivity() {
 
-    // by viewModels { factory } = lazy, survives configuration changes
-    // (rotation), recreated only when the activity is truly destroyed.
     private val viewModel: AssistantViewModel by viewModels {
-        AssistantViewModelFactory(applicationContext)
+        AssistantViewModelFactory(
+            applicationContext
+        )
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
+
         setContent {
             MaterialTheme {
-                AssistantScreen(viewModel)
+                AssistantScreen(
+                    viewModel = viewModel
+                )
             }
         }
     }
 }
 
-/** Hand-rolled DI: builds the ViewModel with its dependencies. */
-class AssistantViewModelFactory(context: Context) : ViewModelProvider.Factory {
-    private val appContext = context.applicationContext
+class AssistantViewModelFactory(
+    context: Context
+) : ViewModelProvider.Factory {
+
+    private val appContext =
+        context.applicationContext
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        AssistantViewModel(
-            voiceRecognizer = AndroidSpeechRecognizer(appContext),
-            chatRepository = ChatRepository(),
-            speaker = AndroidSpeaker(appContext)
-        ) as T
+    override fun <T : ViewModel> create(
+        modelClass: Class<T>
+    ): T {
+
+        if (
+            modelClass.isAssignableFrom(
+                AssistantViewModel::class.java
+            )
+        ) {
+            return AssistantViewModel(
+                voiceRecognizer =
+                    AndroidSpeechRecognizer(
+                        appContext
+                    ),
+
+                chatRepository =
+                    ChatRepository(),
+
+                speaker =
+                    AndroidSpeaker(
+                        appContext
+                    ),
+
+                context =
+                    appContext
+            ) as T
+        }
+
+        throw IllegalArgumentException(
+            "Unknown ViewModel class: ${modelClass.name}"
+        )
+    }
 }

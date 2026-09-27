@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str | None = None
     groq_api_key: str | None = None
+    tavily_api_key: str | None = None
 
     # Model names - override in .env to experiment or when
     # providers rename their models.

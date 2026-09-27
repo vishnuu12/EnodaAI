@@ -40,3 +40,5 @@ urllib3==2.8.0
 uvicorn==0.54.0
 watchfiles==1.3.0
 websockets==16.1.1
+tzdata==2026.2
+tavily-python=0.8.4

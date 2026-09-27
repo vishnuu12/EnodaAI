@@ -1,5 +1,6 @@
 package com.vishnu.assistant.data
 
+import android.util.Log
 import com.vishnu.assistant.core.network.ChatRequest
 import com.vishnu.assistant.core.network.EnodaApi
 import com.vishnu.assistant.core.network.NetworkModule
@@ -32,6 +33,11 @@ class ChatRepository(
     ): ChatResult {
 
         return try {
+
+            Log.d(
+                "EnodaAI",
+                "Sending chat - conversationId=$conversationId, text=$text"
+            )
 
             val response = api.chat(
                 ChatRequest(
