@@ -23,6 +23,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,9 +44,9 @@ import androidx.core.content.ContextCompat
 
 /**
  * The main EnodaAI screen. A pure function of AssistantUiState:
- * permission handling, the mic button, the conversation (You /
- * EnodaAI), the Thinking spinner, the Speaking indicator, and
- * error states.
+ * permission handling, language selection, the mic button,
+ * the conversation (You / EnodaAI), the Thinking spinner,
+ * the Speaking indicator, and error states.
  */
 @Composable
 fun AssistantScreen(viewModel: AssistantViewModel) {
@@ -58,6 +61,7 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
+
     var permissionDenied by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -65,7 +69,10 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
     ) { granted ->
         hasMicPermission = granted
         permissionDenied = !granted
-        if (granted) viewModel.startListening()
+
+        if (granted) {
+            viewModel.startListening()
+        }
     }
 
     Surface(
@@ -79,9 +86,39 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("EnodaAI", fontSize = 28.sp)
 
-            Spacer(Modifier.height(8.dp))
+            // ---- app title ----
+
+            Text(
+                text = "EnodaAI",
+                fontSize = 28.sp
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // ---- language selector ----
+
+            SingleChoiceSegmentedButtonRow {
+                AssistantLanguage.entries.forEachIndexed { index, language ->
+
+                    SegmentedButton(
+                        selected = uiState.language == language,
+                        onClick = {
+                            viewModel.setLanguage(language)
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = AssistantLanguage.entries.size
+                        )
+                    ) {
+                        Text(language.displayName)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ---- current status ----
 
             Text(
                 text = uiState.statusMessage,
@@ -89,15 +126,17 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
                 color = MaterialTheme.colorScheme.primary
             )
 
-            // ---- the conversation ----
+            // ---- conversation ----
 
             if (uiState.recognizedText.isNotBlank()) {
                 Spacer(Modifier.height(24.dp))
+
                 Text(
-                    "You",
+                    text = "You",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
                 Text(
                     text = "\u201C${uiState.recognizedText}\u201D",
                     fontSize = 20.sp
@@ -106,11 +145,13 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
 
             if (uiState.responseText.isNotBlank()) {
                 Spacer(Modifier.height(16.dp))
+
                 Text(
-                    "EnodaAI",
+                    text = "EnodaAI",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
                 Text(
                     text = uiState.responseText,
                     fontSize = 20.sp,
@@ -123,33 +164,53 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
             // ---- state-driven controls ----
 
             when {
+
+                // Speech recognition is unavailable
                 !viewModel.isRecognizerAvailable -> Text(
                     text = "Speech recognition is not available on this device. " +
-                        "Install or enable the Google app, then retry.",
+                            "Install or enable the Google app, then retry.",
                     color = MaterialTheme.colorScheme.error
                 )
 
+                // Microphone permission is not granted
                 !hasMicPermission -> {
                     ExtendedFloatingActionButton(
                         onClick = {
-                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            permissionLauncher.launch(
+                                Manifest.permission.RECORD_AUDIO
+                            )
                         },
-                        icon = { Icon(Icons.Filled.Mic, contentDescription = null) },
-                        text = { Text("Grant microphone access") }
+                        icon = {
+                            Icon(
+                                Icons.Filled.Mic,
+                                contentDescription = null
+                            )
+                        },
+                        text = {
+                            Text("Grant microphone access")
+                        }
                     )
+
                     if (permissionDenied) {
                         Spacer(Modifier.height(12.dp))
+
                         Text(
                             text = "Voice input needs microphone access. Nothing is " +
-                                "recorded beyond processing your current request.",
+                                    "recorded beyond processing your current request.",
                             style = MaterialTheme.typography.bodySmall
                         )
-                        TextButton(onClick = { openAppSettings(context) }) {
+
+                        TextButton(
+                            onClick = {
+                                openAppSettings(context)
+                            }
+                        ) {
                             Text("Open app settings")
                         }
                     }
                 }
 
+                // Listening
                 uiState.status == AssistantStatus.LISTENING -> Surface(
                     onClick = {},
                     shape = CircleShape,
@@ -157,7 +218,9 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
                     modifier = Modifier.size(96.dp),
                     enabled = false
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Mic,
                             contentDescription = "Listening",
@@ -167,18 +230,22 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
                     }
                 }
 
+                // Thinking
                 uiState.status == AssistantStatus.THINKING -> Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator()
+
                     Spacer(Modifier.height(12.dp))
+
                     Text(
-                        "Thinking...",
+                        text = "Thinking...",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
+                // Speaking
                 uiState.status == AssistantStatus.SPEAKING -> Surface(
                     onClick = {},
                     shape = CircleShape,
@@ -186,7 +253,9 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
                     modifier = Modifier.size(96.dp),
                     enabled = false
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Speaking",
@@ -196,20 +265,35 @@ fun AssistantScreen(viewModel: AssistantViewModel) {
                     }
                 }
 
+                // Idle / Recognized / Error
                 else -> ExtendedFloatingActionButton(
                     onClick = viewModel::startListening,
-                    icon = { Icon(Icons.Filled.Mic, contentDescription = "Start listening") },
-                    text = { Text("Speak") }
+                    icon = {
+                        Icon(
+                            Icons.Filled.Mic,
+                            contentDescription = "Start listening"
+                        )
+                    },
+                    text = {
+                        Text("Speak")
+                    }
                 )
             }
         }
     }
 }
 
-private fun openAppSettings(context: android.content.Context) {
+private fun openAppSettings(
+    context: android.content.Context
+) {
     val intent = Intent(
         Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-        Uri.fromParts("package", context.packageName, null)
+        Uri.fromParts(
+            "package",
+            context.packageName,
+            null
+        )
     )
+
     context.startActivity(intent)
 }

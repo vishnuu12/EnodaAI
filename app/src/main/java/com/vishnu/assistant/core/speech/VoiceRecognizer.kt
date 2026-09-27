@@ -19,7 +19,17 @@ sealed interface VoiceRecognitionEvent {
 interface VoiceRecognizer {
     val isAvailable: Boolean
 
-    fun startListening(onEvent: (VoiceRecognitionEvent) -> Unit)
+    /**
+     * Starts speech recognition using the requested locale.
+     *
+     * Examples:
+     * English -> "en-IN"
+     * Tamil   -> "ta-IN"
+     */
+    fun startListening(
+        speechLocale: String,
+        onEvent: (VoiceRecognitionEvent) -> Unit
+    )
 
     fun stopListening()
 

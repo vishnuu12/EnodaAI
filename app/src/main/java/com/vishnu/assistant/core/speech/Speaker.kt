@@ -10,11 +10,23 @@ interface Speaker {
     val isAvailable: Boolean
 
     /**
-     * Speak the given text aloud. [onDone] fires exactly once,
-     * when the utterance finishes OR fails. May be called from a
-     * background thread.
+     * Speak the given text using the requested language/locale.
+     *
+     * Examples:
+     * English -> "en-IN"
+     * Tamil   -> "ta-IN"
+     *
+     * If the requested locale is unavailable, the implementation
+     * should gracefully fall back to a supported voice.
+     *
+     * [onDone] fires exactly once, when the utterance finishes
+     * or fails. May be called from a background thread.
      */
-    fun speak(text: String, onDone: () -> Unit = {})
+    fun speak(
+        text: String,
+        speechLocale: String,
+        onDone: () -> Unit = {}
+    )
 
     /** Stop any current speech immediately. Safe if not speaking. */
     fun stop()

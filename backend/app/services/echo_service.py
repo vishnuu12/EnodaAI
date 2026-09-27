@@ -1,4 +1,5 @@
 from app.services.ai_service import AIService
+from app.services.conversation_memory import ConversationMessage
 
 
 class EchoService(AIService):
@@ -6,10 +7,20 @@ class EchoService(AIService):
 
     Keeps the whole pipeline testable and demonstrable without any
     external account. The orchestrator only adds this when both
-    gemini and groq keys are missing.
+    Gemini and Groq keys are missing.
     """
 
     name = "echo"
 
-    async def generate_reply(self, message: str, language: str = "auto") -> str:
-        return "(echo mode - no AI key configured) You said: " + message
+    async def generate_reply(
+        self,
+        message: str,
+        language: str = "auto",
+        history: list[ConversationMessage] | None = None,
+    ) -> str:
+
+        return (
+            "(echo mode - no AI key configured) "
+            "You said: "
+            + message
+        )

@@ -6,13 +6,12 @@ import retrofit2.converter.gson.GsonConverterFactory
 /**
  * Builds and holds the single Retrofit instance.
  *
- * BASE_URL points at the FastAPI backend running on the laptop
- * on the home Wi-Fi network. In Phase 15 this moves into build
- * configuration with a proper release setup (HTTPS).
+ * BASE_URL points to the public EnodaAI FastAPI backend.
  */
 object NetworkModule {
 
-    private const val BASE_URL = "http://192.168.1.7:8000/"
+    private const val BASE_URL = "https://enodaai.onrender.com/"
+    //private const val BASE_URL = "http://192.168.1.7:8000/"
 
     val enodaApi: EnodaApi by lazy {
         Retrofit.Builder()

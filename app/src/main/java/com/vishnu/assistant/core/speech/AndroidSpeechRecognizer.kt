@@ -14,14 +14,19 @@ import android.speech.SpeechRecognizer
  * Must be created and called from the main thread.
  * All callbacks arrive on the main thread.
  */
-class AndroidSpeechRecognizer(private val context: Context) : VoiceRecognizer {
+class AndroidSpeechRecognizer(
+    private val context: Context
+) : VoiceRecognizer {
 
     override val isAvailable: Boolean
         get() = SpeechRecognizer.isRecognitionAvailable(context)
 
     private var recognizer: SpeechRecognizer? = null
 
-    override fun startListening(onEvent: (VoiceRecognitionEvent) -> Unit) {
+    override fun startListening(
+        speechLocale: String,
+        onEvent: (VoiceRecognitionEvent) -> Unit
+    ) {
         release()
 
         if (!isAvailable) {
@@ -35,61 +40,122 @@ class AndroidSpeechRecognizer(private val context: Context) : VoiceRecognizer {
             return
         }
 
-        recognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    onEvent(VoiceRecognitionEvent.ListeningStarted)
-                }
+        recognizer = SpeechRecognizer
+            .createSpeechRecognizer(context)
+            .apply {
 
-                override fun onBeginningOfSpeech() = Unit
+                setRecognitionListener(
+                    object : RecognitionListener {
 
-                override fun onRmsChanged(rmsdB: Float) = Unit
+                        override fun onReadyForSpeech(
+                            params: Bundle?
+                        ) {
+                            onEvent(
+                                VoiceRecognitionEvent.ListeningStarted
+                            )
+                        }
 
-                override fun onBufferReceived(buffer: ByteArray?) = Unit
+                        override fun onBeginningOfSpeech() = Unit
 
-                override fun onEndOfSpeech() {
-                    onEvent(VoiceRecognitionEvent.SpeechEnded)
-                }
+                        override fun onRmsChanged(
+                            rmsdB: Float
+                        ) = Unit
 
-                override fun onError(error: Int) {
-                    onEvent(VoiceRecognitionEvent.Error(error, errorMessage(error)))
-                }
+                        override fun onBufferReceived(
+                            buffer: ByteArray?
+                        ) = Unit
 
-                override fun onResults(results: Bundle?) {
-                    val text = results
-                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        .orEmpty()
-                        .firstOrNull()
-                        .orEmpty()
-                    onEvent(VoiceRecognitionEvent.Final(text))
-                }
+                        override fun onEndOfSpeech() {
+                            onEvent(
+                                VoiceRecognitionEvent.SpeechEnded
+                            )
+                        }
 
-                override fun onPartialResults(partialResults: Bundle?) {
-                    val text = partialResults
-                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        .orEmpty()
-                        .firstOrNull()
-                        .orEmpty()
-                    if (text.isNotBlank()) {
-                        onEvent(VoiceRecognitionEvent.Partial(text))
+                        override fun onError(
+                            error: Int
+                        ) {
+                            onEvent(
+                                VoiceRecognitionEvent.Error(
+                                    error,
+                                    errorMessage(error)
+                                )
+                            )
+                        }
+
+                        override fun onResults(
+                            results: Bundle?
+                        ) {
+                            val text = results
+                                ?.getStringArrayList(
+                                    SpeechRecognizer.RESULTS_RECOGNITION
+                                )
+                                .orEmpty()
+                                .firstOrNull()
+                                .orEmpty()
+
+                            onEvent(
+                                VoiceRecognitionEvent.Final(text)
+                            )
+                        }
+
+                        override fun onPartialResults(
+                            partialResults: Bundle?
+                        ) {
+                            val text = partialResults
+                                ?.getStringArrayList(
+                                    SpeechRecognizer.RESULTS_RECOGNITION
+                                )
+                                .orEmpty()
+                                .firstOrNull()
+                                .orEmpty()
+
+                            if (text.isNotBlank()) {
+                                onEvent(
+                                    VoiceRecognitionEvent.Partial(text)
+                                )
+                            }
+                        }
+
+                        override fun onEvent(
+                            eventType: Int,
+                            params: Bundle?
+                        ) = Unit
                     }
-                }
+                )
+            }
 
-                override fun onEvent(eventType: Int, params: Bundle?) = Unit
-            })
-        }
+        val listenIntent = Intent(
+            RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+        ).apply {
 
-        val listenIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            // Indian-English recognizer: handles English well and is
-            // tolerant of Indian accents and stray Tamil words.
-            // Phase 9 adds automatic language switching (ta-IN).
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
+
+            putExtra(
+                RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                true
+            )
+
+            putExtra(
+                RecognizerIntent.EXTRA_MAX_RESULTS,
+                1
+            )
+
+            // Selected language:
+            // English -> en-IN
+            // Tamil   -> ta-IN
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE,
+                speechLocale
+            )
+
+            // Prefer the requested locale for the recognition session.
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                speechLocale
+            )
         }
 
         recognizer?.startListening(listenIntent)
@@ -111,15 +177,34 @@ class AndroidSpeechRecognizer(private val context: Context) : VoiceRecognizer {
     }
 
     private fun errorMessage(error: Int): String = when (error) {
-        SpeechRecognizer.ERROR_AUDIO -> "Audio recording error. Please try again."
-        SpeechRecognizer.ERROR_CLIENT -> "Speech client error. Please try again."
-        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is missing."
-        SpeechRecognizer.ERROR_NETWORK -> "Network error. Speech recognition needs internet."
-        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout. Check your connection and retry."
-        SpeechRecognizer.ERROR_NO_MATCH -> "I didn't catch any speech. Please try again."
-        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "The recognizer is busy. Wait a moment and retry."
-        SpeechRecognizer.ERROR_SERVER -> "Speech server error. Please try again later."
-        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech detected. Please try again."
-        else -> "Speech recognition failed (code $error)."
+        SpeechRecognizer.ERROR_AUDIO ->
+            "Audio recording error. Please try again."
+
+        SpeechRecognizer.ERROR_CLIENT ->
+            "Speech client error. Please try again."
+
+        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
+            "Microphone permission is missing."
+
+        SpeechRecognizer.ERROR_NETWORK ->
+            "Network error. Speech recognition needs internet."
+
+        SpeechRecognizer.ERROR_NETWORK_TIMEOUT ->
+            "Network timeout. Check your connection and retry."
+
+        SpeechRecognizer.ERROR_NO_MATCH ->
+            "I didn't catch any speech. Please try again."
+
+        SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
+            "The recognizer is busy. Wait a moment and retry."
+
+        SpeechRecognizer.ERROR_SERVER ->
+            "Speech server error. Please try again later."
+
+        SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
+            "No speech detected. Please try again."
+
+        else ->
+            "Speech recognition failed (code $error)."
     }
 }

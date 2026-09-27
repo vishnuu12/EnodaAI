@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from app.services.conversation_memory import ConversationMessage
+
 
 class AIServiceError(Exception):
     """Raised when a provider cannot produce a reply.
@@ -18,9 +20,8 @@ SYSTEM_PROMPT = (
     "they will be spoken aloud. Be helpful, precise, and warm."
 )
 
-# How to answer, per resolved language. Tamil answers must use
-# Tamil script even when the user wrote Tanglish, because the
-# text-to-speech engine can only pronounce real Tamil script.
+
+# How to answer, per resolved language.
 LANGUAGE_INSTRUCTIONS = {
     "en": "Reply in simple, clear English.",
     "ta": "Reply in Tamil, written in Tamil script.",
@@ -34,9 +35,12 @@ LANGUAGE_INSTRUCTIONS = {
 
 def build_system_prompt(language: str) -> str:
     """Combine the personality with the language instruction."""
+
     instruction = LANGUAGE_INSTRUCTIONS.get(
-        language, LANGUAGE_INSTRUCTIONS["auto"]
+        language,
+        LANGUAGE_INSTRUCTIONS["auto"]
     )
+
     return f"{SYSTEM_PROMPT} {instruction}"
 
 
@@ -51,9 +55,19 @@ class AIService(ABC):
     name: str  # for log lines
 
     @abstractmethod
-    async def generate_reply(self, message: str, language: str = "auto") -> str:
-        """Return a reply for the user's message in the requested
-        language ("en" | "ta" | "auto").
+    async def generate_reply(
+        self,
+        message: str,
+        language: str = "auto",
+        history: list[ConversationMessage] | None = None,
+    ) -> str:
+        """Return a reply for the user's message.
 
-        Raises AIServiceError if this provider cannot answer.
+        Args:
+            message: Current user message.
+            language: Requested language ("en" | "ta" | "auto").
+            history: Previous messages from this conversation.
+
+        Raises:
+            AIServiceError: If this provider cannot answer.
         """
